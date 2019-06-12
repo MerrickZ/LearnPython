@@ -18,39 +18,38 @@ def download(url) :
     
     resp = requests.get(url, proxies=proxies)
     src = resp.content.decode('utf-8')
-    soup = bs4.BeautifulSoup(src,"html.parser")
-    title = soup.title.get_text()[:-13]
+
+    title_left=src.find('<title>')+len('<title>')
+    title_right=src.find('</title>')
+    title=src[title_left:title_right]
     print('>>> %s' % title )
     
     raw = str(src)
 
     try:
-        pos_start = raw.index(P_START)+len(P_START)
-        pos_end = raw.index(P_END)
+        pos_start = raw.find(P_START)+len(P_START)
+        pos_end = raw.find(P_END)
         page_content = raw[pos_start:pos_end]
-        content_soup = bs4.BeautifulSoup(page_content,"html.parser")
+        content_soup = bs4.BeautifulSoup(page_content,"lxml")
         #Other chapters
         links = content_soup.find_all('a')
         for a in links :
             hive.append(a['href'])
+            a.clear()
     except ValueError:
         return
 
     try :
-        lpos_start = raw.index(L_START)+len(L_START)
-        lpos_end = raw.index(L_END)
+        lpos_start = raw.find(L_START)+len(L_START)
+        lpos_end = raw.find(L_END)
         comments = raw[lpos_start:lpos_end]
-        comm_soup=bs4.BeautifulSoup(comments,"html.parser")
+        comm_soup=bs4.BeautifulSoup(comments,"lxml")
         for a in comm_soup.find_all('a'):
             hive.append('https://www.cool18.com/bbs4/%s' % a['href'])
     except ValueError:
         pass
     
-    #Remove in page links
-    for i in content_soup.findAll('a') :
-        i.clear()
-
-    page_content = content_soup.getText(strip=True).replace('cool18.com','\n')
+    page_content = content_soup.getText(strip=True,separator="\n").replace('cool18.com','\n')
     try:
         last_pos=page_content.rindex('评分完成')
         page_content = page_content[:last_pos]
@@ -58,7 +57,7 @@ def download(url) :
         pass
 
     if (len(page_content.strip())>100) :
-        file = open("%s.txt" % title,'w+',encoding='utf-8')
+        file = open("%s.txt" % title,'w+',encoding='utf-8',errors='ignore')
         file.write(page_content)
         file.close()
         print('Done')
@@ -73,8 +72,10 @@ if __name__ == '__main__':
     proxies=dict(http=proxy,https=proxy)
     resp = requests.get(sys.argv[1], proxies=proxies)
     src = resp.content.decode('utf-8')
-    soup = bs4.BeautifulSoup(src,"html.parser")
-    title = soup.title.get_text()[:-13]
+    
+    title_left=src.find('<title>')+len('<title>')
+    title_right=src.find('</title>')
+    title=src[title_left:title_right]
     
     os.mkdir(title)
     os.chdir(title)
@@ -84,9 +85,9 @@ if __name__ == '__main__':
     while (len(hive)>0) :
         current_url = hive.pop()
         if (current_url in downloaded) :
-            print("Pass")
+            print("Ignore")
         else :
-            print("Queue[%d]：%s" % (len(hive),current_url))
+            print("[%d]Download: %s" % (len(hive),current_url))
             downloaded.add(current_url)
             download(current_url)
         
