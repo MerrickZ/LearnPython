@@ -22,6 +22,7 @@ def download(url) :
     title_left=src.find('<title>')+len('<title>')
     title_right=src.find('</title>')
     title=src[title_left:title_right]
+    title=title.replace(" - cool18.com","").strip()
     print('>>> %s' % title )
     
     raw = str(src)
@@ -34,7 +35,9 @@ def download(url) :
         #Other chapters
         links = content_soup.find_all('a')
         for a in links :
-            hive.append(a['href'])
+            _url = a.get('href')
+            if (_url and len(_url.strip())>8) :
+                hive.append(_url)
             a.clear()
     except ValueError:
         return
@@ -45,11 +48,15 @@ def download(url) :
         comments = raw[lpos_start:lpos_end]
         comm_soup=bs4.BeautifulSoup(comments,"lxml")
         for a in comm_soup.find_all('a'):
-            hive.append('https://www.cool18.com/bbs4/%s' % a['href'])
+            _u = a.get('href')
+            if (_u and _u.startswith("http")) :
+                hive.append(_u)
+            else:
+                hive.append('https://www.cool18.com/bbs4/%s' % _u)
     except ValueError:
         pass
     
-    page_content = content_soup.getText(strip=True,separator="\n").replace('cool18.com','\n')
+    page_content = content_soup.getText(strip=True,separator="\n").replace('cool18.com','\n').replace('www.6park.com','').replace('6park.com','')
     try:
         last_pos=page_content.rindex('评分完成')
         page_content = page_content[:last_pos]
@@ -57,10 +64,13 @@ def download(url) :
         pass
 
     if (len(page_content.strip())>100) :
-        file = open("%s.txt" % title,'w+',encoding='utf-8',errors='ignore')
-        file.write(page_content)
-        file.close()
-        print('Done')
+        try:
+            with open("%s.txt" % title,'w+',encoding='utf-8',errors='ignore') as file :
+                file.write(page_content)
+                print('Done')
+        except :
+            print("Error writing %s" % title)
+   
 
 if __name__ == '__main__':
     if (len(sys.argv)<2) :
@@ -76,6 +86,7 @@ if __name__ == '__main__':
     title_left=src.find('<title>')+len('<title>')
     title_right=src.find('</title>')
     title=src[title_left:title_right]
+    title=title.replace(" - cool18.com","").strip()
     
     os.mkdir(title)
     os.chdir(title)
