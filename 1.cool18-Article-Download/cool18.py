@@ -6,21 +6,24 @@ import sys
 import bs4
 import requests
 
-# requires: requests,bs4,lxml,pysocks
+# requires: requests bs4 lxml pysocks
+
 
 def to_str(bytes_or_str):
-    if isinstance(bytes_or_str,bytes):
+    if isinstance(bytes_or_str, bytes):
         value = bytes_or_str.decode('utf-8')
     else:
         value = bytes_or_str
     return value
 
+
 def to_bytes(bytes_or_str):
-    if isinstance(bytes_or_str,str):
+    if isinstance(bytes_or_str, str):
         value = bytes_or_str.encode('utf-8')
     else:
         value = bytes_or_str
     return value
+
 
 def fetch(url):
     # Change to your own proxy.
@@ -28,7 +31,7 @@ def fetch(url):
     proxies = dict(http=proxy, https=proxy)
     try:
         resp = requests.get(url, proxies=proxies)
-        src = resp.content.decode('utf-8')
+        src = to_str(resp.content)
         return src
     except:
         return False
@@ -61,6 +64,10 @@ def download(url):
         # Other chapters
         links = content_soup.find_all('a')
         for a in links:
+            _title = a.getText()
+            if (_title.find('银元奖励') > -1) or (_title.find('无内容') > -1) or (_title.find('版块基金') > -1):
+                continue
+            print(_title)
             _url = a.get('href')
             if (_url and len(_url.strip()) > 8):
                 hive.append(_url)
@@ -74,6 +81,10 @@ def download(url):
         comments = raw[lpos_start:lpos_end]
         comm_soup = bs4.BeautifulSoup(comments, "lxml")
         for a in comm_soup.find_all('a'):
+            _title = a.getText()
+            if (_title.find('银元奖励') > -1) or (_title.find('无内容') > -1) or (_title.find('版块基金') > -1):
+                continue
+            print(_title)
             _u = a.get('href')
             if (_u and _u.startswith("http")):
                 hive.append(_u)
@@ -121,12 +132,14 @@ if __name__ == '__main__':
     src = fetch(sys.argv[1])
     title = extract_title(src)
 
-    os.mkdir(title)
-    os.chdir(title)
+    try:
+        os.mkdir(title)
+    finally:
+        os.chdir(title)
 
     try:
         with open("config.txt", 'w+', encoding='utf-8', errors='ignore') as file:
-            file.write("TITLE: %s" % title)
+            file.write("TITLE: %s \n" % title)
             file.write("URL: %s \n" % sys.argv[1])
     except:
         pass
