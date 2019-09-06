@@ -5,8 +5,9 @@ import re
 import sys
 
 import bs4
-import html2epub
 import requests
+
+import html2epub
 
 # requires: requests bs4 lxml pysocks html2epub
 
@@ -44,7 +45,7 @@ def fetch(url):
             src = to_str(resp.content)
             return src
         finally:
-            pass 
+            pass
     else:
         try:
             resp = requests.get(url)
@@ -126,9 +127,9 @@ def download(url):
         pass
     [s.extract() for s in content_soup('script')]
 
-    page_content = str(content_soup)
-    page_content=page_content.replace(
-        'cool18.com', '\n').replace('www.6park.com', '').replace('6park.com', '')
+    page_content = str(content_soup.find('body').getText())
+    page_content = page_content.replace(
+        'cool18.com', '\n').replace('www.6park.com', '').replace('6park.com', '').replace("\n", "</p><p>")
     try:
         last_pos = page_content.rindex('评分完成')
         page_content = page_content[:last_pos]
@@ -138,11 +139,12 @@ def download(url):
     if (len(page_content.strip()) > int(config['minContent'])):
         try:
             with open("%s-%s.html" % (tid, title), 'w+', encoding='utf-8', errors='ignore') as file:
-                file.write('<html><head><META HTTP-EQUIV="content-type" CONTENT="text/html; charset=utf-8">  <title>')
+                file.write(
+                    '<?xml version="1.0" encoding="utf-8"?><!DOCTYPE html><html><head><META HTTP-EQUIV="content-type" CONTENT="text/html; charset=utf-8">  <title>')
                 file.write(title)
-                file.write("</title></head><body>")
+                file.write("</title></head><body><pre><p>")
                 file.write(page_content)
-                file.write("</body></html>")
+                file.write("</p></pre></body></html>")
                 print('Done')
         except:
             print("Error writing %s" % title)
@@ -214,7 +216,7 @@ if __name__ == '__main__':
     print("Download completed, now packaging epub...")
     epub = html2epub.Epub(title)
     for file in os.listdir("."):
-        chap = html2epub.ChapterFactory.create_chapter_from_file(file)
+        chap = html2epub.create_chapter_from_file(file)
         epub.add_chapter(chap)
     epub.create_epub(dirname)
     print("OK")
