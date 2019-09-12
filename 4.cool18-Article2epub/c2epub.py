@@ -12,7 +12,7 @@ import html2epub
 # requires: requests bs4 lxml pysocks html2epub
 
 config = {
-    "enableProxy": "yes",
+    "enableProxy": "no",
     "proxy": "socks5://127.0.0.1:1081",
     "minContent": 1000,
     "waitPackage": "no"
@@ -36,7 +36,6 @@ def to_bytes(bytes_or_str):
 
 
 def fetch(url):
-    # Change to your own proxy.
     if config['enableProxy'] == 'yes':
         proxy = config['proxy']
         proxies = dict(http=proxy, https=proxy)
@@ -166,7 +165,7 @@ def extract_title(content):
 def loadConfig():
     cf = configparser.ConfigParser()
     try:
-        cf.read('c2epub.conf')
+        cf.read('config.ini')
         config['enableProxy'] = cf.get('network', 'enableProxy')
         config['proxy'] = cf.get('network', 'proxy')
         config['minContent'] = cf.get('config', 'minContent')
@@ -190,7 +189,9 @@ if __name__ == '__main__':
             file.write("URL: %s \n" % sys.argv[1])
     except:
         pass
+    dirname = os.path.dirname(os.path.realpath(__file__))
 
+    
     try:
         os.mkdir(title)
     except:
@@ -212,11 +213,11 @@ if __name__ == '__main__':
     if config['waitPackage'] == 'yes':
         input('Press Enter when ready...')
 
-    dirname = os.path.dirname(os.path.realpath(__file__))
+    
     print("Download completed, now packaging epub...")
-    epub = html2epub.Epub(title)
+    epub = html2epub.Epub(title,language="zh-cn",creator="cool18",publisher="cool18")
     for file in os.listdir("."):
         chap = html2epub.create_chapter_from_file(file)
         epub.add_chapter(chap)
-    epub.create_epub(dirname)
-    print("OK")
+    epubpath=epub.create_epub(dirname)
+    print("OK, epub generated at: %s" %epubpath)
