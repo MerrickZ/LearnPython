@@ -83,6 +83,7 @@ def download(url):
         title = "Unknown"
     print('>>> %s' % title)
 
+
     # REMOVE BLANKS
 
     raw = str(src)
@@ -114,7 +115,7 @@ def download(url):
         comm_soup = bs4.BeautifulSoup(comments, "lxml")
         for a in comm_soup.find_all('a'):
             _title = a.getText()
-            if (_title.find('银元奖励') > -1) or (_title.find('无内容') > -1) or (_title.find('版块基金') > -1):
+            if (_title.find('银元奖励') > -1) or (_title.find('无内容') > -1) or (_title.find('版块基金') > -1) or (_title.find(' 给 ') > -1) or (_title.find('金币的幸运红包')>-1):
                 continue
             print(_title)
             _u = a.get('href')
@@ -124,11 +125,17 @@ def download(url):
                 hive.append('https://www.cool18.com/bbs4/%s' % _u)
     except ValueError:
         pass
+    
+    # SKIP DOWNLOADED FILES
+    if (os.path.exists("%s-%s.html" % (tid, title))):
+        print("[SKIP]%s-%s.html already exists." % (tid, title))
+        return
+    
     [s.extract() for s in content_soup('script')]
 
     page_content = str(content_soup.find('body').getText())
     page_content = page_content.replace(
-        'cool18.com', '\n').replace('www.6park.com', '').replace('6park.com', '').replace("\n", "</p><p>")
+        'cool18.com', '\n').replace('www.6park.com', '').replace('6park.com', '').replace("\n", "</p><p>").replace("<p></p>","")
     try:
         last_pos = page_content.rindex('评分完成')
         page_content = page_content[:last_pos]
@@ -205,7 +212,7 @@ if __name__ == '__main__':
     while hive:
         current_url = hive.pop()
         if (current_url in downloaded):
-            print("Ignore %s " % current_url)
+            print("[PASS] %s " % current_url)
         else:
             print("[%d]Download: %s" % (len(hive), current_url))
             downloaded.add(current_url)
