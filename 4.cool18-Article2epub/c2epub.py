@@ -1,13 +1,14 @@
 #!/usr/bin/python3
+import argparse
 import configparser
 import os
 import re
 import sys
+import urllib
 
 import bs4
-import requests
-
 import html2epub
+import requests
 
 # requires: requests bs4 lxml pysocks html2epub
 
@@ -54,23 +55,21 @@ def fetch(url):
             return ""
 
 
+P_START = "<!--bodybegin-->"
+P_END = "<!--bodyend-->"
+L_START = '''<a name="followups" style=''>'''
+L_END = '''<a name="postfp">'''
+
+
 def download(url):
-    if (url.find("cool18.com") < 0):
+    if not (config['host'] in url):
         return
+    uri = urllib.parse.urlparse(url)
+    params = urllib.parse.parse_qs(uri.query)
 
-    # GET TID
-
-    tid = ""
-    tid_search = re.search('tid=(\d+)', url, re.IGNORECASE)
-    if tid_search:
-        tid = tid_search.group(1)
-    else:
+    tid = params['tid']
+    if not tid:
         return
-
-    P_START = "<!--bodybegin-->"
-    P_END = "<!--bodyend-->"
-    L_START = '''<a name="followups" style=''>'''
-    L_END = '''<a name="postfp">'''
 
     src = fetch(url)
 
@@ -82,7 +81,6 @@ def download(url):
     else:
         title = "Unknown"
     print('>>> %s' % title)
-
 
     # REMOVE BLANKS
 
@@ -98,8 +96,8 @@ def download(url):
         for a in links:
             _title = a.getText()
             print(_title)
-
             _url = a.get('href')
+
             if (_url and len(_url.strip()) > 8):
                 hive.append(_url)
 
@@ -115,27 +113,27 @@ def download(url):
         comm_soup = bs4.BeautifulSoup(comments, "lxml")
         for a in comm_soup.find_all('a'):
             _title = a.getText()
-            if (_title.find('银元奖励') > -1) or (_title.find('无内容') > -1) or (_title.find('版块基金') > -1) or (_title.find(' 给 ') > -1) or (_title.find('金币的幸运红包')>-1):
+            if ('银元奖励' in _title) or ('无内容' in _title) or ('版块基金' in _title) or (' 给 ' in _title) or ('幸运红包' in _title):
                 continue
             print(_title)
             _u = a.get('href')
             if (_u and _u.startswith("http")):
                 hive.append(_u)
             else:
-                hive.append('https://www.cool18.com/bbs4/%s' % _u)
+                hive.append(config['host'] + _u)
     except ValueError:
         pass
-    
+
     # SKIP DOWNLOADED FILES
     if (os.path.exists("%s-%s.html" % (tid, title))):
         print("[SKIP]%s-%s.html already exists." % (tid, title))
         return
-    
+
     [s.extract() for s in content_soup('script')]
 
     page_content = str(content_soup.find('body').getText())
     page_content = page_content.replace(
-        'cool18.com', '\n').replace('www.6park.com', '').replace('6park.com', '').replace("\n", "</p><p>").replace("<p></p>","")
+        'cool18.com', '\n').replace('www.6park.com', '').replace('6park.com', '').replace("\n", "</p><p>").replace("<p></p>", "")
     try:
         last_pos = page_content.rindex('评分完成')
         page_content = page_content[:last_pos]
@@ -181,34 +179,30 @@ def loadConfig():
         pass
 
 
+# Main Logic
 if __name__ == '__main__':
-    if (len(sys.argv) < 2):
-        print('a cool18.com url is required')
-        exit()
-    pypath = sys.argv[0]
+    parser = argparse.ArgumentParser(
+        description="Download articles from cool18.com then generate epub.")
+    parser.add_argument("url",type=str, help="a cool18.com article URL.")
+    args = parser.parse_args()
     loadConfig()
 
-    src = fetch(sys.argv[1])
+    pypath = sys.argv[0]
+    pydir = os.getcwd()
+
+    config['host'] = args.url[:args.url.rindex('/')+1]
+
+    src = fetch(args.url)
     title = extract_title(src)
-    try:
-        with open("%s.ini" % title, 'w+', encoding='utf-8', errors='ignore') as file:
-            file.write("TITLE: %s \r\n" % title)
-            file.write("URL: %s \n" % sys.argv[1])
-    except:
-        pass
-    dirname = os.path.dirname(os.path.realpath(__file__))
 
-    
-    try:
+    if not os.path.exists(title):
         os.mkdir(title)
-    except:
-        pass
-    finally:
-        os.chdir(title)
+    os.chdir(title)
 
-    hive = [sys.argv[1]]
-
+    # Init Hive
+    hive = [args.url]
     downloaded = set()
+
     while hive:
         current_url = hive.pop()
         if (current_url in downloaded):
@@ -220,11 +214,11 @@ if __name__ == '__main__':
     if config['waitPackage'] == 'yes':
         input('Press Enter when ready...')
 
-    
     print("Download completed, now packaging epub...")
-    epub = html2epub.Epub(title,language="zh-cn",creator="cool18",publisher="cool18")
+    epub = html2epub.Epub(title, language="zh-cn",
+                          creator="cool18", publisher="cool18")
     for file in os.listdir("."):
         chap = html2epub.create_chapter_from_file(file)
         epub.add_chapter(chap)
-    epubpath=epub.create_epub(dirname)
-    print("OK, epub generated at: %s" %epubpath)
+    epubpath = epub.create_epub(pydir)
+    print("OK, epub generated at: %s" % epubpath)
