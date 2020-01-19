@@ -5,6 +5,7 @@ import os
 import re
 import sys
 import urllib
+import shutil
 
 import bs4
 import html2epub
@@ -16,7 +17,8 @@ config = {
     "enableProxy": "no",
     "proxy": "socks5://127.0.0.1:1081",
     "minContent": 1000,
-    "waitPackage": "no"
+    "waitPackage": "no",
+    "autoDelete":"yes"
 }
 
 
@@ -60,6 +62,34 @@ P_END = "<!--bodyend-->"
 L_START = '''<a name="followups" style=''>'''
 L_END = '''<a name="postfp">'''
 
+def extract_title(content,full=False):
+    title_left = content.find('<title>')+len('<title>')
+    title_right = content.find('</title>')
+    title = content[title_left:title_right]
+
+    if (full):
+      title = title.replace(" - cool18.com", "").replace("/","-").replace("\\","-").strip()
+    else:
+        title_search = re.search('[【《](.*)[】》]', title, re.IGNORECASE)
+        if title_search:
+            title = title_search.group(1)
+        else:
+            title = title.replace(" - cool18.com", "").replace("/","-").replace("\\","-").strip()
+
+    return title
+
+
+def loadConfig():
+    cf = configparser.ConfigParser()
+    try:
+        cf.read('config.ini')
+        config['enableProxy'] = cf.get('network', 'enableProxy')
+        config['proxy'] = cf.get('network', 'proxy')
+        config['minContent'] = cf.get('config', 'minContent')
+        config['waitPackage'] = cf.get('config', 'waitPackage')
+    except:
+        pass
+
 
 def download(url):
     if not (config['host'] in url):
@@ -72,8 +102,8 @@ def download(url):
         return
 
     src = fetch(url)
-    title = extract_title(src)
-    print('>>> %s' % title)
+    title = extract_title(src,full=True)
+    print('+%s' % title)
 
     # REMOVE BLANKS
 
@@ -108,7 +138,7 @@ def download(url):
             _title = a.getText()
             if ('银元奖励' in _title) or ('无内容' in _title) or ('版块基金' in _title) or (' 给 ' in _title) or ('幸运红包' in _title):
                 continue
-            print(_title)
+            print('+%s' % title)
             _u = a.get('href')
             if (_u and _u.startswith("http")):
                 hive.append(_u)
@@ -119,7 +149,7 @@ def download(url):
 
     # SKIP DOWNLOADED FILES
     if (os.path.exists("%s-%s.html" % (tid, title))):
-        print("[SKIP]%s-%s.html already exists." % (tid, title))
+        print("#%s-%s.html already exists." % (tid, title))
         return
 
     [s.extract() for s in content_soup('script')]
@@ -142,34 +172,12 @@ def download(url):
                 file.write("</title></head><body><pre><p>")
                 file.write(page_content)
                 file.write("</p></pre></body></html>")
-                print('Done')
+                print('>Done')
         except:
             print("Error writing %s" % title)
 
 
-def extract_title(content):
-    title_left = content.find('<title>')+len('<title>')
-    title_right = content.find('</title>')
-    title = content[title_left:title_right]
 
-    title_search = re.search('[【《](.*)[】》]', title, re.IGNORECASE)
-    if title_search:
-        title = title_search.group(1)
-    else:
-        title = title.replace(" - cool18.com", "").strip()
-    return title
-
-
-def loadConfig():
-    cf = configparser.ConfigParser()
-    try:
-        cf.read('config.ini')
-        config['enableProxy'] = cf.get('network', 'enableProxy')
-        config['proxy'] = cf.get('network', 'proxy')
-        config['minContent'] = cf.get('config', 'minContent')
-        config['waitPackage'] = cf.get('config', 'waitPackage')
-    except:
-        pass
 
 
 # Main Logic
@@ -199,19 +207,24 @@ if __name__ == '__main__':
     while hive:
         current_url = hive.pop()
         if (current_url in downloaded):
-            print("[PASS] %s " % current_url)
+            print("-%s " % current_url)
         else:
-            print("[%d]Download: %s" % (len(hive), current_url))
+            print("~[%d] %s" % (len(hive), current_url))
             downloaded.add(current_url)
             download(current_url)
     if config['waitPackage'] == 'yes':
-        input('Press Enter when ready...')
+        input('>Press Enter when ready...')
 
-    print("Download completed, now packaging epub...")
+    print(">Download completed, now packaging epub...")
     epub = html2epub.Epub(title, language="zh-cn",
                           creator="cool18", publisher="cool18")
     for file in os.listdir("."):
         chap = html2epub.create_chapter_from_file(file)
         epub.add_chapter(chap)
     epubpath = epub.create_epub(pydir)
-    print("OK, epub generated at: %s" % epubpath)
+    print(">OK, epub generated at: %s" % epubpath)
+    
+    if config['autoDelete'] == 'yes':
+        os.chdir("..")
+        print(">Deleting Directory: %s" % title)
+        shutil.rmtree(title)
