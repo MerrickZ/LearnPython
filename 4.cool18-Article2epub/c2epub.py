@@ -72,14 +72,7 @@ def download(url):
         return
 
     src = fetch(url)
-
-    # GET TITLE
-    title_search = re.search(r'<title>(.+)</title>', src, re.IGNORECASE)
-    title = ""
-    if title_search:
-        title = title_search.group(1).replace(" - cool18.com", "").strip()
-    else:
-        title = "Unknown"
+    title = extract_title(src)
     print('>>> %s' % title)
 
     # REMOVE BLANKS
