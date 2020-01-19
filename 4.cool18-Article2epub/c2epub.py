@@ -3,9 +3,9 @@ import argparse
 import configparser
 import os
 import re
+import shutil
 import sys
 import urllib
-import shutil
 
 import bs4
 import html2epub
@@ -138,7 +138,7 @@ def download(url):
             _title = a.getText()
             if ('银元奖励' in _title) or ('无内容' in _title) or ('版块基金' in _title) or (' 给 ' in _title) or ('幸运红包' in _title):
                 continue
-            print('+%s' % title)
+            print('+%s' % _title)
             _u = a.get('href')
             if (_u and _u.startswith("http")):
                 hive.append(_u)
@@ -155,6 +155,7 @@ def download(url):
     [s.extract() for s in content_soup('script')]
 
     page_content = str(content_soup.find('body').getText())
+    page_content = page_content.replace("\n","")
     page_content = page_content.replace(
         'cool18.com', '\n').replace('www.6park.com', '').replace('6park.com', '').replace("\n", "</p><p>").replace("<p></p>", "")
     try:
