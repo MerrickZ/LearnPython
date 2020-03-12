@@ -18,9 +18,9 @@ config = {
     "proxy": "socks5://127.0.0.1:1081",
     "minContent": 1000,
     "waitPackage": "no",
-    "autoDelete":"yes"
+    "autoDelete": "yes",
+    "verifyCert": "yes"
 }
-
 
 def to_str(bytes_or_str):
     if isinstance(bytes_or_str, bytes):
@@ -39,11 +39,12 @@ def to_bytes(bytes_or_str):
 
 
 def fetch(url):
+
     if config['enableProxy'] == 'yes':
         proxy = config['proxy']
         proxies = dict(http=proxy, https=proxy)
         try:
-            resp = requests.get(url, proxies=proxies)
+            resp = requests.get(url, proxies=proxies, verify=verifySSLCert)
             src = to_str(resp.content)
             return src
         finally:
@@ -62,19 +63,22 @@ P_END = "<!--bodyend-->"
 L_START = '''<a name="followups" style=''>'''
 L_END = '''<a name="postfp">'''
 
-def extract_title(content,full=False):
+
+def extract_title(content, full=False):
     title_left = content.find('<title>')+len('<title>')
     title_right = content.find('</title>')
     title = content[title_left:title_right]
 
     if (full):
-      title = title.replace(" - cool18.com", "").replace("/","-").replace("\\","-").strip()
+        title = title.replace(" - cool18.com", "").replace("/",
+                                                           "-").replace("\\", "-").strip()
     else:
         title_search = re.search('[【《](.*)[】》]', title, re.IGNORECASE)
         if title_search:
             title = title_search.group(1)
         else:
-            title = title.replace(" - cool18.com", "").replace("/","-").replace("\\","-").strip()
+            title = title.replace(
+                " - cool18.com", "").replace("/", "-").replace("\\", "-").strip()
 
     return title
 
@@ -87,8 +91,10 @@ def loadConfig():
         config['proxy'] = cf.get('network', 'proxy')
         config['minContent'] = cf.get('config', 'minContent')
         config['waitPackage'] = cf.get('config', 'waitPackage')
+        config['verifyCert'] = cf.get('network', 'verifyCert')
     except:
         pass
+
 
 
 def download(url):
@@ -102,7 +108,7 @@ def download(url):
         return
 
     src = fetch(url)
-    title = extract_title(src,full=True)
+    title = extract_title(src, full=True)
     print('+%s' % title)
 
     # REMOVE BLANKS
@@ -155,7 +161,7 @@ def download(url):
     [s.extract() for s in content_soup('script')]
 
     page_content = str(content_soup.find('body').getText())
-    page_content = page_content.replace("\n","")
+    page_content = page_content.replace("\n", "")
     page_content = page_content.replace(
         'cool18.com', '\n').replace('www.6park.com', '').replace('6park.com', '').replace("\n", "</p><p>").replace("<p></p>", "")
     try:
@@ -178,17 +184,18 @@ def download(url):
             print("Error writing %s" % title)
 
 
-
-
-
 # Main Logic
 if __name__ == '__main__':
+    verifySSLCert=True
     parser = argparse.ArgumentParser(
         description="Download articles from cool18.com then generate epub.")
-    parser.add_argument("url",type=str, help="a cool18.com article URL.")
+    parser.add_argument("url", type=str, help="a cool18.com article URL.")
     args = parser.parse_args()
     loadConfig()
-
+    if config['verifyCert'] == 'yes':
+        verifySSLCert = True
+    else:
+        verifySSLCert = False
     pypath = sys.argv[0]
     pydir = os.getcwd()
 
@@ -224,7 +231,7 @@ if __name__ == '__main__':
         epub.add_chapter(chap)
     epubpath = epub.create_epub(pydir)
     print(">OK, epub generated at: %s" % epubpath)
-    
+
     if config['autoDelete'] == 'yes':
         os.chdir("..")
         print(">Deleting Directory: %s" % title)
