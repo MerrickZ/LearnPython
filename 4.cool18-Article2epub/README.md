@@ -5,14 +5,13 @@
 ```
 c2epub.py	--> the main executor
 config.ini	--> config file
-req.txt		--> requiremnt file for pip3
 ```
 
 ### How to use
 
 1. clone or download this repo
 2. navigate to this folder
-3. ```pip3 install -r req.txt```
+3. ```pip3 install bs4 lxml requests pysocks html2epub```
 4. edit config.txt to set the proxy and other options
 5. ```./c2epub.py "article url here"```
 
