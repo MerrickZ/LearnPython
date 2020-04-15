@@ -10,6 +10,7 @@
 
 import hashlib
 import os
+import sys
 from functools import partial
 from os.path import getsize, join
 
@@ -34,6 +35,7 @@ class node():
     filepath = None
     filesize = None
     filehash = None
+    samewith = None
 
     def __init__(self, fpath):
         self.filepath = fpath
@@ -54,9 +56,11 @@ print("Finding duplicate files in ", current_directory)
 
 huge_hash_table = {}
 to_delete_list = []
+file_count = 0
 
 for root, dirs, files in os.walk(current_directory):
     for file in files:
+        file_count = file_count+1
         p = node(os.path.join(root, file))
         fz = str(p.filesize)
         if fz in huge_hash_table.keys():
@@ -66,6 +70,7 @@ for root, dirs, files in os.walk(current_directory):
 
             for i in huge_hash_table[fz]:
                 if not dup_flag and (hash_of_p == i.gethash()):
+                    p.samewith = i.filepath
                     dup_flag = True
 
             if dup_flag:
@@ -77,24 +82,28 @@ for root, dirs, files in os.walk(current_directory):
             else:
                 huge_hash_table[fz] = []
                 huge_hash_table[fz].append(p)
+        sys.stdout.write("\r%d files scanned, %d duplicated files found." % (
+            file_count, len(to_delete_list)))
+        sys.stdout.flush()
 
 print("Files to be deleted:")
 log = open("rmdup.files", "w+")
 for i in to_delete_list:
     print(i.filepath)
-    print(i.filepath, file=log)
+    print("%s>>>%s" % (i.filepath,i.samewith), file=log)
 log.close()
 
 print("Checkout rmdup.files for details.")
 
 s = input("Just delete ALL(y/n/f)? F to load entries from rmdup.files >")
-if (s.lower == "y"):
+if (s.lower() == "y"):
     for i in to_delete_list:
         print("Deleting ", i.filepath)
         os.remove(i.filepath)
 
-if (s.lower == "f"):
+if (s.lower() == "f"):
     with open("rmdup.files", "r") as f:
         for line in f.readlines():
-            print("Deleting ", line)
-            os.remove(line)
+            file_to_delete = line.split(">>>")[0]
+            print("Deleting ", file_to_delete)
+            os.remove(file_to_delete)
