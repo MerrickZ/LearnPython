@@ -22,6 +22,7 @@ config = {
     "verifyCert": "yes"
 }
 
+
 def to_str(bytes_or_str):
     if isinstance(bytes_or_str, bytes):
         value = bytes_or_str.decode('utf-8')
@@ -44,7 +45,8 @@ def fetch(url):
         proxy = config['proxy']
         proxies = dict(http=proxy, https=proxy)
         try:
-            resp = requests.get(url, proxies=proxies, verify=verifySSLCert)
+            resp = requests.get(url, proxies=proxies, verify=(
+                config['verifyCert'] == 'yes'))
             src = to_str(resp.content)
             return src
         finally:
@@ -92,9 +94,9 @@ def loadConfig():
         config['minContent'] = cf.get('config', 'minContent')
         config['waitPackage'] = cf.get('config', 'waitPackage')
         config['verifyCert'] = cf.get('network', 'verifyCert')
+        requests.packages.urllib3.disable_warnings()
     except:
         pass
-
 
 
 def download(url):
@@ -124,7 +126,7 @@ def download(url):
         links = content_soup.find_all('a')
         for a in links:
             _title = a.getText()
-            print(_title)
+            #print('+%s' % _title)
             _url = a.get('href')
 
             if (_url and len(_url.strip()) > 8):
@@ -144,7 +146,7 @@ def download(url):
             _title = a.getText()
             if ('银元奖励' in _title) or ('无内容' in _title) or ('版块基金' in _title) or (' 给 ' in _title) or ('幸运红包' in _title):
                 continue
-            print('+%s' % _title)
+            #print('+%s' % _title)
             _u = a.get('href')
             if (_u and _u.startswith("http")):
                 hive.append(_u)
@@ -155,7 +157,7 @@ def download(url):
 
     # SKIP DOWNLOADED FILES
     if (os.path.exists("%s-%s.html" % (tid, title))):
-        print("#%s-%s.html already exists." % (tid, title))
+        print("#%s-%s.html already exists." % (tid, title), file=sys.stderr)
         return
 
     [s.extract() for s in content_soup('script')]
@@ -174,28 +176,22 @@ def download(url):
         try:
             with open("%s-%s.html" % (tid, title), 'w+', encoding='utf-8', errors='ignore') as file:
                 file.write(
-                    '<?xml version="1.0" encoding="utf-8"?><!DOCTYPE html><html><head><META HTTP-EQUIV="content-type" CONTENT="text/html; charset=utf-8">  <title>')
+                    r'<?xml version="1.0" encoding="utf-8" standalone="no"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.1//EN" "http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd"><html xmlns="http://www.w3.org/1999/xhtml" xml:lang="zh-CN"><head><title>')
                 file.write(title)
-                file.write("</title></head><body><pre><p>")
+                file.write(r"</title></head><body><p>")
                 file.write(page_content)
-                file.write("</p></pre></body></html>")
-                print('>Done')
+                file.write(r"</p></body></html>")
         except:
-            print("Error writing %s" % title)
+            print("Error writing %s" % title, file=sys.stderr)
 
 
 # Main Logic
 if __name__ == '__main__':
-    verifySSLCert=True
     parser = argparse.ArgumentParser(
-        description="Download articles from cool18.com then generate epub.")
-    parser.add_argument("url", type=str, help="a cool18.com article URL.")
+        description=r"Download articles from cool18.com then generate epub.")
+    parser.add_argument("url", type=str, help=r"a cool18.com article URL.")
     args = parser.parse_args()
     loadConfig()
-    if config['verifyCert'] == 'yes':
-        verifySSLCert = True
-    else:
-        verifySSLCert = False
     pypath = sys.argv[0]
     pydir = os.getcwd()
 
@@ -215,11 +211,12 @@ if __name__ == '__main__':
     while hive:
         current_url = hive.pop()
         if (current_url in downloaded):
-            print("-%s " % current_url)
+            pass
         else:
-            print("~[%d] %s" % (len(hive), current_url))
-            downloaded.add(current_url)
+            print(r"~[%3d]%s" % (len(hive), current_url))
             download(current_url)
+            downloaded.add(current_url)
+
     if config['waitPackage'] == 'yes':
         input('>Press Enter when ready...')
 
