@@ -1,5 +1,4 @@
 #!/usr/bin/python3
-import argparse
 import configparser
 import os
 import re
@@ -187,17 +186,21 @@ def download(url):
 
 # Main Logic
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(
-        description=r"Download articles from cool18.com then generate epub.")
-    parser.add_argument("url", type=str, help=r"a cool18.com article URL.")
-    args = parser.parse_args()
+    args_length = len(sys.argv)
+    url = None
+
+    if (args_length > 1):
+        url = sys.argv[1]
+
+    if (not url):
+        url = str(input("请粘贴cool18站的文章网址:"))
     loadConfig()
     pypath = sys.argv[0]
     pydir = os.getcwd()
 
-    config['host'] = args.url[:args.url.rindex('/')+1]
+    config['host'] = url[:url.rindex('/')+1]
 
-    src = fetch(args.url)
+    src = fetch(url)
     title = extract_title(src)
 
     if not os.path.exists(title):
@@ -205,7 +208,7 @@ if __name__ == '__main__':
     os.chdir(title)
 
     # Init Hive
-    hive = [args.url]
+    hive = [url]
     downloaded = set()
 
     while hive:
