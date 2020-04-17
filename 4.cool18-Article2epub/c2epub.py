@@ -74,12 +74,16 @@ def extract_title(content, full=False):
         title = title.replace(" - cool18.com", "").replace("/",
                                                            "-").replace("\\", "-").strip()
     else:
-        title_search = re.search('[【《](.*)[】》]', title, re.IGNORECASE)
+        title_search = re.search('[《](.*?)[》]', title, re.IGNORECASE)
         if title_search:
             title = title_search.group(1)
         else:
-            title = title.replace(
-                " - cool18.com", "").replace("/", "-").replace("\\", "-").strip()
+            title_search = re.search('[【](.*?)[】]', title, re.IGNORECASE)
+            if title_search:
+                title = title_search.group(1)
+            else:
+                title = title.replace(
+                    " - cool18.com", "").replace("/", "-").replace("\\", "-").strip()
 
     return title
 
@@ -162,9 +166,14 @@ def download(url):
     [s.extract() for s in content_soup('script')]
 
     page_content = str(content_soup.find('body').getText())
-    page_content = page_content.replace("\n", "")
+    page_content = page_content.replace(os.linesep, "@@@@@@@@")
     page_content = page_content.replace(
-        'cool18.com', '\n').replace('www.6park.com', '').replace('6park.com', '').replace("\n", "</p><p>").replace("<p></p>", "")
+        'cool18.com', '@@@@@@@@').replace('www.6park.com', '').replace('6park.com', '')
+    page_content = page_content.replace("@@@@@@@@@@@@@@@@", "</p><p>")
+    page_content = page_content.replace("@@@@@@@@", "")
+    page_content = page_content.replace(" ", "")
+    page_content = page_content.replace("　", "")
+
     try:
         last_pos = page_content.rindex('评分完成')
         page_content = page_content[:last_pos]
