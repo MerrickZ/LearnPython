@@ -18,3 +18,7 @@ config.ini	--> config file
 ### NSFW WARNING
 
 This repo is used to download and package some adult novels, if you're under 18, please leave.
+
+### RESTRICTIONS
+
+Old posts can't be processed, for example: http://www.cool18.com/bbs4/index.php?app=forum&act=threadview&tid=13864396 
