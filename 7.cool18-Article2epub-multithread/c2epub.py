@@ -10,7 +10,6 @@ import time
 import urllib
 
 import bs4
-import chardet
 import html2epub
 import requests
 
@@ -23,7 +22,7 @@ config = {
     "waitPackage": "no",
     "autoDelete": "yes",
     "verifyCert": "yes",
-    "threads": 3
+    "threads": 5
 }
 
 
@@ -38,8 +37,10 @@ def find_all(a_str, sub):
 
 
 def to_str(bytes_or_str):
-    codec = chardet.detect(bytes_or_str)
-    value = bytes_or_str.decode(encoding=codec['encoding'])
+    try:
+        value = bytes_or_str.decode(encoding="UTF-8")
+    except:
+        value = bytes_or_str.decode(encoding="GBK")
     return value
 
 
@@ -126,7 +127,7 @@ def loadConfig():
         pass
 
 
-def download(url,threadname):
+def download(url, threadname):
 
     uri = urllib.parse.urlparse(url)
     params = urllib.parse.parse_qs(uri.query)
@@ -137,7 +138,7 @@ def download(url,threadname):
 
     src = fetch(url)
     title = extract_title(src, full=True)
-    print(f'{threadname}:GOT {title}')
+    print(f'{threadname}:PROC {title}')
     # REMOVE BLANKS
     raw = str(src)
 
@@ -183,7 +184,7 @@ def download(url,threadname):
     downloading.pop()
     # SKIP DOWNLOADED FILES
     if (os.path.exists("%s-%s.html" % (tid, title))):
-        print(f"{threadname}:SKP {tid}-{title}.html" , file=sys.stderr)
+        print(f"{threadname}:SKIP {tid}-{title}.html", file=sys.stderr)
         return
 
     [s.extract() for s in content_soup('script')]
@@ -219,9 +220,9 @@ def download(url,threadname):
                 file.write(page_content)
                 file.write(r"</p></body></html>")
         except:
-            print(f"{threadname}:Error writing {title}", file=sys.stderr)
+            print(f"{threadname}:ERR CAN'T WRITE {title}", file=sys.stderr)
     else:
-        print(f'{threadname}:IGN {title}')
+        print(f'{threadname}:PASS {title}')
     # add to downloaded
     downloaded.add(url)
 
@@ -231,7 +232,7 @@ class fetcher(threading.Thread):
         threading.Thread.__init__(self)
         self.name = name
         self.q = q
-        self.daemon=True
+        self.daemon = True
 
     def run(self):
         while not exitflag:
@@ -242,7 +243,7 @@ class fetcher(threading.Thread):
             threadlock.release()
             if (url):
                 downloading.append(url)
-                download(url,self.name)
+                download(url, self.name)
 
 
 workqueue = queue.Queue()
@@ -259,7 +260,7 @@ if __name__ == '__main__':
     if (args_length > 1):
         url = sys.argv[1]
     if (not url):
-        url = str(input("请粘贴cool18站的文章网址:"))
+        url = str(input("#请粘贴cool18站的文章网址:"))
     loadConfig()
     pypath = sys.argv[0]
     pydir = os.getcwd()
