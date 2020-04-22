@@ -7,34 +7,35 @@ from PyPDF2 import PdfFileReader, PdfFileWriter
 
 
 def deletepagesFromPdf(pdfin, pdfout):
+    pdf_out = PdfFileWriter()
     with open(pdfin, 'rb') as f:
         pdf_src = PdfFileReader(f)
         ipages = pdf_src.getNumPages()
-        print("Original PDF Pages: %d" % ipages)
-        skip_page_1 = False
-        skip_page_last = False
+        print(f"Original PDF Pages: {ipages}")
+        for i in range(0,ipages):
+            page_src = pdf_src.getPage(i)
+            if page_src.mediaBox[2] == 960 and page_src.mediaBox[3] == 540:
+                continue
+            if page_src.mediaBox[2] == 294.24 and page_src.mediaBox[3] == 206.4:
+                continue
+            pdf_out.addPage(page_src)
+        print(f"New PDF Pages: {pdf_out.getNumPages()}")
+        if pdf_out.getNumPages() + 2 < ipages:
+            # all same size, leave it be.
+            return
+    with open(pdfout,'wb') as o:
+        pdf_out.write(o)
+    os.remove(pdfin)
+            
 
-        page2detect_1st = pdf_src.getPage(1)
-        if page2detect_1st.mediaBox[2] == 960 and page2detect_1st.mediaBox[3] == 540:
-            skip_page_1 = True
-        page2detect_2nd = pdf_src.getPage(ipages-1)
-        print("mediabox %s" % page2detect_2nd.mediaBox)
-        if page2detect_2nd.mediaBox[2] == 294.24 and page2detect_2nd.mediaBox[3] == 206.4:
-            skip_page_last = True
-
-        pdf_out = PdfFileWriter()
-        pdf_out.addPage(pdf_src.getPage(0))
-        fromindex = 1
-        toindex = ipages-1
-        if skip_page_1:
-            fromindex = 2
-        if skip_page_last:
-            toindex = ipages-2
-        for i in range(fromindex, toindex):
-            pdf_out.addPage(pdf_src.getPage(i))
-        with open(pdfout, 'wb') as fo:
-            pdf_out.write(fo)
-
+def sort_into_directories(cdir,filename):
+    years=["2020","2019","2018",'2017','2016','2015']
+    for i in years:
+        if i in filename:
+            if ( not os.path.exists(i)) :
+                os.mkdir(i)
+            deletepagesFromPdf(filename,os.path.join(cdir,i,filename))
+            return
 
 if __name__ == '__main__':
     print('清理当前目录下的PDF文件')
@@ -46,16 +47,6 @@ if __name__ == '__main__':
         print("处理文件： %s" % f)
         os.chmod(f, stat.S_IWRITE)
         try:
-            if "2019" in f:
-                deletepagesFromPdf(current_dir+"/"+f, current_dir+"/2019/"+f)
-            if "2018" in f:
-                deletepagesFromPdf(current_dir+"/"+f, current_dir+"/2018/"+f)
-            if "2017" in f:
-                deletepagesFromPdf(current_dir+"/"+f, current_dir+"/2017/"+f)
-            if "2016" in f:
-                deletepagesFromPdf(current_dir+"/"+f, current_dir+"/2016/"+f)
-            if "2015" in f:
-                deletepagesFromPdf(current_dir+"/"+f, current_dir+"/2015/"+f)
-            os.remove(f)
+            sort_into_directories(current_dir,f)
         except Exception as e:
             print("处理失败 %s" % e)
